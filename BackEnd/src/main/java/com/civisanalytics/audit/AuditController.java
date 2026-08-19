@@ -31,8 +31,8 @@ public class AuditController {
 	private final DoctavianService doctavianService;
 	private final NameComService nameComService;
 
-	public AuditController(AuditService auditService, SerpApiService serpApiService,
-			DoctavianService doctavianService, NameComService nameComService) {
+	public AuditController(AuditService auditService, SerpApiService serpApiService, DoctavianService doctavianService,
+			NameComService nameComService) {
 		this.auditService = auditService;
 		this.serpApiService = serpApiService;
 		this.doctavianService = doctavianService;
@@ -124,8 +124,10 @@ public class AuditController {
 		String aiVerdict = payload.get("aiVerdict");
 		String idObra = payload.getOrDefault("idObra", "OBRA-N/A");
 
+		String nomeObra = companyName + " (" + idObra + ")";
+
 		try {
-			String documentUrl = doctavianService.generateAuditReport(idObra, companyName, aiVerdict);
+			String documentUrl = doctavianService.gerarTermoOficial(nomeObra, aiVerdict);
 			return ResponseEntity.ok("{\"document_url\": \"" + documentUrl + "\"}");
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
