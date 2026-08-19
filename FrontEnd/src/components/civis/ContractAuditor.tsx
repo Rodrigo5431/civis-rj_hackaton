@@ -1,6 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/card";
-import { Bot, CheckCircle, CheckCircle2, FileSignature, Loader2, Sparkles, Wand2, Globe, Server, Check, RefreshCw } from "lucide-react";
+import {
+  Bot,
+  CheckCircle,
+  CheckCircle2,
+  FileSignature,
+  Loader2,
+  Sparkles,
+  Wand2,
+  Globe,
+  Server,
+  Check,
+  RefreshCw,
+} from "lucide-react";
 
 type AuditStatus =
   | "PENDING_EXTRACTION"
@@ -26,11 +38,14 @@ const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 interface OfficialDocumentSectionProps {
   auditId: string;
   idObra: string;
-  companyName: string;
   aiVerdict: string;
 }
 
-function OfficialDocumentSection({ auditId, idObra, companyName, aiVerdict }: OfficialDocumentSectionProps) {
+function OfficialDocumentSection({
+  auditId,
+  idObra,
+  aiVerdict,
+}: OfficialDocumentSectionProps) {
   const [doctavianUrl, setDoctavianUrl] = useState<string | null>(null);
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,16 +55,19 @@ function OfficialDocumentSection({ auditId, idObra, companyName, aiVerdict }: Of
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/${auditId}/generate-official-document?companyName=${encodeURIComponent(companyName)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${API_BASE_URL}/${auditId}/generate-official-document`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            aiVerdict: aiVerdict,
+            idObra: idObra,
+          }),
         },
-        body: JSON.stringify({
-          aiVerdict: aiVerdict,
-          idObra: idObra
-        })
-      });
+      );
 
       if (!response.ok) {
         const errData = await response.json().catch(() => null);
@@ -70,7 +88,8 @@ function OfficialDocumentSection({ auditId, idObra, companyName, aiVerdict }: Of
     <div className="mt-6 border-t border-slate-700 pt-5">
       <h3 className="text-lg font-semibold text-white mb-2">Operações de Fechamento (Doctavian)</h3>
       <p className="text-sm text-slate-400 mb-4">
-        Transforme o laudo técnico em um Termo Oficial de Notificação pronto para assinatura digital.
+        Transforme o laudo técnico em um Termo Oficial de Notificação pronto para assinatura
+        digital.
       </p>
 
       {!doctavianUrl ? (
@@ -96,7 +115,9 @@ function OfficialDocumentSection({ auditId, idObra, companyName, aiVerdict }: Of
           <CheckCircle2 className="text-emerald-400 mt-0.5 shrink-0" size={20} />
           <div>
             <p className="font-semibold">Termo Oficial Gerado com Sucesso!</p>
-            <p className="text-xs text-emerald-400/80 mb-2">O documento foi estruturado e enviado para o fluxo de assinatura.</p>
+            <p className="text-xs text-emerald-400/80 mb-2">
+              O documento foi estruturado e enviado para o fluxo de assinatura.
+            </p>
             <a
               href={doctavianUrl}
               target="_blank"
@@ -126,15 +147,17 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
   const handleSearchDomains = async () => {
     setIsSearching(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/transparency/domain-search?cityName=${encodeURIComponent(cityName)}`);
+      const response = await fetch(
+        `${API_BASE_URL}/transparency/domain-search?cityName=${encodeURIComponent(cityName)}`,
+      );
       const data = await response.json();
       if (data.results) {
-        setDomains(data.results.slice(0, 3)); 
+        setDomains(data.results.slice(0, 3));
       } else {
         setDomains([
           { domainName: `transparencia-${cityName}.org`, purchasePrice: 12.99 },
           { domainName: `obras-${cityName}.live`, purchasePrice: 3.99 },
-          { domainName: `civis-${cityName}.info`, purchasePrice: 5.99 }
+          { domainName: `civis-${cityName}.info`, purchasePrice: 5.99 },
         ]);
       }
     } catch (error) {
@@ -155,7 +178,8 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
         Portal de Transparência (Name.com)
       </h3>
       <p className="text-sm text-slate-400 mb-4">
-        Disponibilize os dados desta auditoria para a população. Busque e provisione um domínio dedicado instantaneamente.
+        Disponibilize os dados desta auditoria para a população. Busque e provisione um domínio
+        dedicado instantaneamente.
       </p>
 
       {!registeredDomain ? (
@@ -171,14 +195,19 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
             </button>
           ) : (
             <div className="space-y-3 animate-in fade-in duration-300">
-              <p className="text-xs text-blue-300 uppercase tracking-wider font-semibold">Opções Disponíveis na Name.com:</p>
+              <p className="text-xs text-blue-300 uppercase tracking-wider font-semibold">
+                Opções Disponíveis na Name.com:
+              </p>
               {domains.map((d, i) => (
-                <div key={i} className="flex items-center justify-between bg-slate-950/50 border border-slate-700 p-3 rounded-lg hover:border-blue-500/50 transition-colors">
+                <div
+                  key={i}
+                  className="flex items-center justify-between bg-slate-950/50 border border-slate-700 p-3 rounded-lg hover:border-blue-500/50 transition-colors"
+                >
                   <div>
                     <p className="font-mono text-slate-200 text-sm">{d.domainName}</p>
                     <p className="text-xs text-slate-400 mt-0.5">Preço: ${d.purchasePrice}/ano</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleRegister(d.domainName)}
                     className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded shadow-md flex items-center gap-1.5 transition-colors"
                   >
@@ -195,7 +224,11 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
           <div>
             <p className="font-semibold text-blue-300">Domínio Provisionado com Sucesso!</p>
             <p className="text-xs text-blue-200/80 mt-1">
-              O domínio <span className="font-mono text-white bg-blue-900/80 px-1.5 py-0.5 rounded mx-1">{registeredDomain}</span> foi registrado via Name.com API. O DNS está sendo propagado para o painel público.
+              O domínio{" "}
+              <span className="font-mono text-white bg-blue-900/80 px-1.5 py-0.5 rounded mx-1">
+                {registeredDomain}
+              </span>{" "}
+              foi registrado via Name.com API. O DNS está sendo propagado para o painel público.
             </p>
           </div>
         </div>
@@ -209,16 +242,16 @@ export function ContractAuditor() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [audit, setAudit] = useState<AuditUploadResponse | null>(null);
-  
+
   const [isApproved, setIsApproved] = useState<boolean>(false);
-  const [isApproving, setIsApproving] = useState<boolean>(false); 
-  
+  const [isApproving, setIsApproving] = useState<boolean>(false);
+
   const [parecerIA, setParecerIA] = useState<string | null>(null);
   const [isGeneratingParecer, setIsGeneratingParecer] = useState<boolean>(false);
 
-  const [formKey, setFormKey] = useState<number>(0); 
+  const [formKey, setFormKey] = useState<number>(0);
 
   function handleReset() {
     setIdObra("");
@@ -227,7 +260,7 @@ export function ContractAuditor() {
     setIsApproved(false);
     setParecerIA(null);
     setError(null);
-    setFormKey(prev => prev + 1); 
+    setFormKey((prev) => prev + 1);
   }
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
@@ -281,10 +314,10 @@ export function ContractAuditor() {
 
   async function handleApprove() {
     if (!audit || isApproving) return;
-    
+
     setIsApproving(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/${audit.id}/approve`, {
         method: "PATCH",
@@ -302,7 +335,7 @@ export function ContractAuditor() {
 
   async function handleGerarParecerIA() {
     if (!audit) return;
-    
+
     setIsGeneratingParecer(true);
     setError(null);
 
@@ -310,7 +343,7 @@ export function ContractAuditor() {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -318,7 +351,8 @@ export function ContractAuditor() {
           messages: [
             {
               role: "system",
-              content: "Você é o Copiloto Civis, um auditor sênior de obras públicas. Seja direto, técnico e profissional."
+              content:
+                "Você é o Copiloto Civis, um auditor sênior de obras públicas. Seja direto, técnico e profissional.",
             },
             {
               role: "user",
@@ -326,14 +360,14 @@ export function ContractAuditor() {
               Considere os seguintes dados:
               - Extração de Contrato (Nutrient DWS): Validação Concluída sem adulterações.
               - Varredura na Web (SerpApi): Nenhum risco iminente ou fraude detectada.
-              Finalize recomendando a liberação do orçamento para início das atividades.`
-            }
-          ]
-        })
+              Finalize recomendando a liberação do orçamento para início das atividades.`,
+            },
+          ],
+        }),
       });
 
       if (!response.ok) throw new Error("Falha ao gerar parecer com a IA.");
-      
+
       const data = await response.json();
       setParecerIA(data.choices[0].message.content);
     } catch (err) {
@@ -352,9 +386,7 @@ export function ContractAuditor() {
           <h2 className="text-lg font-semibold uppercase tracking-widest text-cyan-300">
             Auditoria de Contratos
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Powered by Nutrient DWS API
-          </p>
+          <p className="text-sm text-slate-400 mt-1">Powered by Nutrient DWS API</p>
         </div>
         {isApproved && (
           <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
@@ -368,7 +400,9 @@ export function ContractAuditor() {
         <div>
           <form onSubmit={handleUpload} className="flex flex-col gap-5">
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-slate-300">ID da Obra / Processo Licitatório</span>
+              <span className="text-sm font-medium text-slate-300">
+                ID da Obra / Processo Licitatório
+              </span>
               <input
                 type="text"
                 value={idObra}
@@ -382,7 +416,7 @@ export function ContractAuditor() {
             <label className="flex flex-col gap-2">
               <span className="text-sm font-medium text-slate-300">Documento (PDF)</span>
               <input
-                key={formKey} 
+                key={formKey}
                 type="file"
                 accept="application/pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
@@ -423,15 +457,23 @@ export function ContractAuditor() {
           {audit ? (
             <div className="rounded-xl border border-white/10 bg-slate-900/40 p-6 h-full flex flex-col shadow-inner animate-in fade-in duration-300">
               <div className="mb-6 flex flex-wrap gap-6 text-sm border-b border-white/5 pb-4">
-                <p><strong className="text-cyan-400 uppercase text-xs tracking-wider">Status</strong><br/> <span className="font-medium">{audit.status}</span></p>
-                <p><strong className="text-cyan-400 uppercase text-xs tracking-wider">DWS ID</strong><br/> <span className="font-mono text-xs">{audit.dwsDocumentId}</span></p>
+                <p>
+                  <strong className="text-cyan-400 uppercase text-xs tracking-wider">Status</strong>
+                  <br /> <span className="font-medium">{audit.status}</span>
+                </p>
+                <p>
+                  <strong className="text-cyan-400 uppercase text-xs tracking-wider">DWS ID</strong>
+                  <br /> <span className="font-mono text-xs">{audit.dwsDocumentId}</span>
+                </p>
               </div>
 
               <div className="mb-6 flex flex-1 min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed border-white/20 bg-slate-950/80">
                 <div className="text-center text-slate-400 p-6">
                   <p className="mb-3 font-semibold text-slate-300 text-lg">DWS Viewer</p>
                   <p className="text-sm mb-4">Simulação do visualizador de documentos Nutrient</p>
-                  <p className="text-xs break-all px-4 font-mono text-slate-500">{audit.dwsViewerUrl}</p>
+                  <p className="text-xs break-all px-4 font-mono text-slate-500">
+                    {audit.dwsViewerUrl}
+                  </p>
                 </div>
               </div>
 
@@ -442,7 +484,11 @@ export function ContractAuditor() {
                   disabled={isApproving}
                   className="w-full rounded-md bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-500 disabled:opacity-50 transition-all flex justify-center items-center gap-2"
                 >
-                  {isApproving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                  {isApproving ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-5 h-5" />
+                  )}
                   {isApproving ? "Aprovando..." : "Aprovar Extração de Dados"}
                 </button>
               ) : (
@@ -466,18 +512,17 @@ export function ContractAuditor() {
                       <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-lg p-5">
                         <div className="flex items-center gap-2 mb-3 text-indigo-300">
                           <Bot className="w-5 h-5" />
-                          <h3 className="font-semibold text-sm uppercase tracking-wide">Parecer do Copiloto</h3>
+                          <h3 className="font-semibold text-sm uppercase tracking-wide">
+                            Parecer do Copiloto
+                          </h3>
                         </div>
-                        <p className="text-sm text-indigo-100 leading-relaxed">
-                          {parecerIA}
-                        </p>
+                        <p className="text-sm text-indigo-100 leading-relaxed">{parecerIA}</p>
                       </div>
 
-                      <OfficialDocumentSection 
-                        auditId={audit.id} 
-                        idObra={audit.idObra} 
-                        companyName="Construtora Exemplo S/A" 
-                        aiVerdict={parecerIA} 
+                      <OfficialDocumentSection
+                        auditId={audit.id}
+                        idObra={audit.idObra}
+                        aiVerdict={parecerIA}
                       />
 
                       <TransparencyPortalSection cityName="petropolis" />
@@ -490,7 +535,10 @@ export function ContractAuditor() {
             <div className="rounded-xl border border-white/10 bg-slate-900/20 p-8 h-full flex flex-col items-center justify-center text-slate-500 border-dashed text-center">
               <Wand2 className="w-12 h-12 mb-4 text-slate-700" />
               <p className="font-medium text-slate-400">Nenhum contrato em análise</p>
-              <p className="text-sm mt-2">Faça o upload do documento ao lado para iniciar a extração de dados com a Nutrient DWS.</p>
+              <p className="text-sm mt-2">
+                Faça o upload do documento ao lado para iniciar a extração de dados com a Nutrient
+                DWS.
+              </p>
             </div>
           )}
         </div>
