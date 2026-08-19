@@ -64,21 +64,13 @@ public class AuditController {
 			String text = stripper.getText(document).toLowerCase();
 
 			int score = 0;
-
-			if (text.contains("contratante"))
-				score++;
-			if (text.contains("contratada"))
-				score++;
-			if (text.contains("cláusula"))
-				score++;
-			if (text.contains("licitação"))
-				score++;
-			if (text.contains("termo de referência"))
-				score++;
-			if (text.contains("diário oficial"))
-				score++;
-			if (text.contains("cnpj"))
-				score++;
+			if (text.contains("contratante")) score++;
+			if (text.contains("contratada")) score++;
+			if (text.contains("cláusula")) score++;
+			if (text.contains("licitação")) score++;
+			if (text.contains("termo de referência")) score++;
+			if (text.contains("diário oficial")) score++;
+			if (text.contains("cnpj")) score++;
 
 			if (score < 2) {
 				return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
@@ -118,16 +110,22 @@ public class AuditController {
 	}
 
 	@PostMapping("/{id}/generate-official-document")
-	public ResponseEntity<?> generateOfficialDocument(@PathVariable UUID id,
-			@RequestParam("companyName") String companyName, @RequestBody Map<String, String> payload) {
+	public ResponseEntity<?> generateOfficialDocument(
+			@PathVariable UUID id,
+			@RequestBody Map<String, String> payload) {
 
 		String aiVerdict = payload.get("aiVerdict");
 		String idObra = payload.getOrDefault("idObra", "OBRA-N/A");
+		
+		ContractAudit audit = auditService.findById(id);
+		String empresaReal = "Empresa Contratada Não Identificada";
 
-		String nomeObra = companyName + " (" + idObra + ")";
+		if (audit != null && audit.getNomeResponsavel() != null && !audit.getNomeResponsavel().isBlank()) {
+			empresaReal = audit.getNomeResponsavel();
+		}
 
 		try {
-			String documentUrl = doctavianService.gerarTermoOficial(nomeObra, aiVerdict);
+			String documentUrl = doctavianService.gerarTermoOficialComEmpresa(idObra, empresaReal, aiVerdict);
 			return ResponseEntity.ok("{\"document_url\": \"" + documentUrl + "\"}");
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

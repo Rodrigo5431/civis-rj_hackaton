@@ -54,6 +54,9 @@ public class ContractAudit {
 	@Column(name = "auditor_notes")
 	private String auditorNotes;
 
+	@Column(name = "nome_responsavel")
+	private String nomeResponsavel;
+
 	@Column(name = "uploaded_at", nullable = false, updatable = false)
 	private OffsetDateTime uploadedAt = OffsetDateTime.now();
 
@@ -145,6 +148,14 @@ public class ContractAudit {
 		this.auditorNotes = auditorNotes;
 	}
 
+	public String getNomeResponsavel() {
+		return nomeResponsavel;
+	}
+
+	public void setNomeResponsavel(String nomeResponsavel) {
+		this.nomeResponsavel = nomeResponsavel;
+	}
+
 	public OffsetDateTime getUploadedAt() {
 		return uploadedAt;
 	}
@@ -160,5 +171,4 @@ public class ContractAudit {
 	public void setUpdatedAt(OffsetDateTime updatedAt) {
 		this.updatedAt = updatedAt;
 	}
-
 }
