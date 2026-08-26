@@ -23,42 +23,28 @@ public class NameComService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public Map<String, Object> searchTransparencyDomain(String keyword) {
+    public Map<String, Object> registerDomain(String domainName) {
         HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth(username, token);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        String auth = username + ":" + token;
-        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
-        headers.set("Authorization", "Basic " + encodedAuth);
 
-        Map<String, Object> requestBody = new HashMap<>();
-        String cleanKeyword = keyword.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        Map<String, Object> domainObj = new HashMap<>();
+        domainObj.put("domainName", domainName);
         
-        requestBody.put("keyword", cleanKeyword);
-        requestBody.put("tldFilter", List.of("org", "live", "net", "info")); 
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("domain", domainObj);
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(
-                    apiUrl + "/domains:search", 
-                    requestEntity, 
+                    "https://api.name.com/v4/domains",
+                    requestEntity,
                     Map.class
             );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody();
-            }
-            throw new RuntimeException("A API da Name.com não retornou resultados.");
-
+            return response.getBody();
         } catch (Exception e) {
-            Map<String, Object> mockResponse = new HashMap<>();
-            mockResponse.put("results", List.of(
-                Map.of("domainName", cleanKeyword + ".org", "purchasable", true, "purchasePrice", 12.99),
-                Map.of("domainName", cleanKeyword + ".live", "purchasable", true, "purchasePrice", 3.99),
-                Map.of("domainName", cleanKeyword + ".info", "purchasable", true, "purchasePrice", 5.99)
-            ));
-            return mockResponse;
+            throw new RuntimeException("Erro ao registrar o domínio na Name.com: " + e.getMessage());
         }
     }
 }

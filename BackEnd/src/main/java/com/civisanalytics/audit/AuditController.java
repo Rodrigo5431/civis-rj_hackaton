@@ -64,13 +64,20 @@ public class AuditController {
 			String text = stripper.getText(document).toLowerCase();
 
 			int score = 0;
-			if (text.contains("contratante")) score++;
-			if (text.contains("contratada")) score++;
-			if (text.contains("cláusula")) score++;
-			if (text.contains("licitação")) score++;
-			if (text.contains("termo de referência")) score++;
-			if (text.contains("diário oficial")) score++;
-			if (text.contains("cnpj")) score++;
+			if (text.contains("contratante"))
+				score++;
+			if (text.contains("contratada"))
+				score++;
+			if (text.contains("cláusula"))
+				score++;
+			if (text.contains("licitação"))
+				score++;
+			if (text.contains("termo de referência"))
+				score++;
+			if (text.contains("diário oficial"))
+				score++;
+			if (text.contains("cnpj"))
+				score++;
 
 			if (score < 2) {
 				return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
@@ -110,13 +117,11 @@ public class AuditController {
 	}
 
 	@PostMapping("/{id}/generate-official-document")
-	public ResponseEntity<?> generateOfficialDocument(
-			@PathVariable UUID id,
-			@RequestBody Map<String, String> payload) {
+	public ResponseEntity<?> generateOfficialDocument(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
 
 		String aiVerdict = payload.get("aiVerdict");
 		String idObra = payload.getOrDefault("idObra", "OBRA-N/A");
-		
+
 		ContractAudit audit = auditService.findById(id);
 		String empresaReal = "Empresa Contratada Não Identificada";
 
@@ -125,23 +130,28 @@ public class AuditController {
 		}
 
 		try {
-			String documentUrl = doctavianService.gerarTermoOficialComEmpresa(idObra, empresaReal, aiVerdict);
-			return ResponseEntity.ok("{\"document_url\": \"" + documentUrl + "\"}");
+			String documentUrl = doctavianService.gerarTermoOficial(id.toString(), idObra, aiVerdict, empresaReal);
+			
+            // CORREÇÃO: Retorna um Map nativo para garantir o Content-Type: application/json
+			return ResponseEntity.ok(Map.of("document_url", documentUrl));
+            
 		} catch (Exception e) {
+            // Adicionado printStackTrace para garantir que qualquer erro futuro apareça no console do Java
+            e.printStackTrace(); 
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body("{\"error\": \"Erro ao gerar documento oficial: " + e.getMessage() + "\"}");
+					.body(Map.of("error", "Erro ao gerar documento oficial via Doctavian: " + e.getMessage()));
 		}
 	}
 
-	@GetMapping("/transparency/domain-search")
-	public ResponseEntity<?> searchTransparencyDomain(@RequestParam("cityName") String cityName) {
+	@PostMapping("/transparency/domain-register")
+	public ResponseEntity<?> registerTransparencyDomain(@RequestBody Map<String, String> payload) {
 		try {
-			String keyword = "transparencia-" + cityName;
-			Map<String, Object> domains = nameComService.searchTransparencyDomain(keyword);
-			return ResponseEntity.ok(domains);
+			String domainName = payload.get("domainName");
+			Map<String, Object> result = nameComService.registerDomain(domainName);
+			return ResponseEntity.ok(result);
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Map.of("error", "Erro ao conectar com Name.com: " + e.getMessage()));
+					.body(Map.of("error", "Erro ao registrar domínio: " + e.getMessage()));
 		}
 	}
 }

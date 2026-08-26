@@ -53,9 +53,9 @@ public class NutrientDwsService {
 
             Map<String, Object> responseBody = response.getBody();
             
-            String requestId = responseBody.get("requestId").toString();
+            String requestId = responseBody.get("requestId") != null ? responseBody.get("requestId").toString() : "REQ-" + System.currentTimeMillis();
 
-            String viewerUrl = "https://viewer.nutrient.io/view/" + requestId + "?token=" + apiKey;
+            String viewerUrl = "EMBEDDED_WEB_SDK";
 
             Object outputObj = responseBody.get("output");
             String extractedJson = outputObj != null ? outputObj.toString() : "{\"status\": \"Extraído com sucesso\"}";

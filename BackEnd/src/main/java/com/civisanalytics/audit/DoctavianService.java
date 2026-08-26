@@ -1,30 +1,19 @@
 package com.civisanalytics.audit;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class DoctavianService {
@@ -38,186 +27,151 @@ public class DoctavianService {
 	@Value("${doctavian.template.urn}")
 	private String templateUrn;
 
-	public String gerarTermoOficialComEmpresa(String nomeObra, String empresaContratada, String parecerIa) {
-		String empresaReal = (empresaContratada != null && !empresaContratada.isBlank())
-				? empresaContratada
-				: (nomeObra != null ? nomeObra : "Empresa Contratada Padrão");
+	@Value("${doctavian.api.token}")
+	private String apiToken;
 
-		return gerarTermoOficialGeral(
-			nomeObra != null ? nomeObra : "Obra Pública Municipal", 
-			empresaReal, 
-			parecerIa
-		);
-	}
+	private final RestTemplate restTemplate = new RestTemplate();
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	public String gerarTermoOficial(String nomeObra, String parecerIa) {
-		String obraReal = nomeObra != null ? nomeObra : "Obra Pública Municipal";
-		String empresaReal = obraReal;
+public String gerarTermoOficial(String auditId, String idObra, String aiVerdict, String empresaContratada) {
+        
+        // 1. PREPARAR HEADERS DE AUTENTICAÇÃO
+        HttpHeaders authHeaders = new HttpHeaders();
+        authHeaders.set("x-api-key", apiKey.trim());
+        String cleanToken = apiToken.startsWith("Bearer ") ? apiToken : "Bearer " + apiToken;
+        authHeaders.set("Authorization", cleanToken.trim());
 
-		if (obraReal.contains("-")) {
-			String[] partes = obraReal.split("-", 2);
-			obraReal = partes[0].trim();
-			empresaReal = partes[1].trim();
-		}
+        // 2. MONTAR OS DADOS DA AUDITORIA
+        Map<String, Object> dataValues = new HashMap<>();
+        dataValues.put("id_obra", idObra);
+        dataValues.put("audit_id", auditId);
+        dataValues.put("empresa_contratada", empresaContratada);
+        dataValues.put("parecer_tecnico", aiVerdict);
+        dataValues.put("data_emissao", java.time.LocalDate.now().toString());
 
-		return gerarTermoOficialGeral(obraReal, empresaReal, parecerIa);
-	}
+        // 3. FAZER UPLOAD DOS DADOS E PEGAR O ID
+        String dataUrn = fazerUploadDeDados(dataValues, authHeaders);
+        System.out.println("DEBUG DOCTAVIAN -> Upload de dados OK. URN recebido: " + dataUrn);
 
-	private String gerarTermoOficialGeral(String nomeObra, String empresaContratada, String parecerIa) {
-		RestTemplate restTemplate = new RestTemplate();
+        // 4. STEP 5 - GERAR O DOCUMENTO
+        String generateUrl = apiUrl + "/v1/documents/document/generate";
 
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("x-api-key", apiKey);
-		headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders generateHeaders = new HttpHeaders();
+        generateHeaders.putAll(authHeaders);
+        generateHeaders.setContentType(MediaType.APPLICATION_JSON);
+        generateHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-		Map<String, Object> requestBody = new HashMap<>();
+        Map<String, Object> externalContext = new HashMap<>();
+        externalContext.put("id", "audit-" + auditId);
 
-		Map<String, Object> templateMap = new HashMap<>();
-		templateMap.put("urn", templateUrn);
-		templateMap.put("loadMethod", "Storage");
-		templateMap.put("fileFormat", "docx");
-		requestBody.put("template", templateMap);
+        Map<String, Object> templateConfig = new HashMap<>();
+        templateConfig.put("name", "template.docx"); 
+        templateConfig.put("urn", templateUrn);
+        templateConfig.put("fileFormat", "docx");
+        templateConfig.put("loadMethod", "Storage");
+        templateConfig.put("options", new HashMap<>());
 
-		String protocolo = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-		String dataAtual = java.time.LocalDate.now().toString();
+        Map<String, Object> dataConfig = new HashMap<>();
+        dataConfig.put("loadMethod", "Storage");
+        dataConfig.put("urn", dataUrn);
 
-		boolean isAprovado = parecerIa.toLowerCase().contains("liberar") || 
-		                     parecerIa.toLowerCase().contains("aprovado") || 
-		                     parecerIa.toLowerCase().contains("sem incidentes") ||
-		                     parecerIa.toLowerCase().contains("autorizo");
+        Map<String, Object> documentConfig = new HashMap<>();
+        documentConfig.put("name", "Termo-Notificacao-Obra-" + idObra);
+        documentConfig.put("fileFormat", "pdf");
+        documentConfig.put("deliveryMethod", "Storage");
+        documentConfig.put("path", "root");
+        documentConfig.put("locale", "pt-BR");
+        documentConfig.put("timezone", "America/Sao_Paulo");
 
-		String statusRisco = isAprovado ? "Baixo Risco - Aprovado para Liberação" : "Alto Risco - Retido para Diligência";
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("externalContext", externalContext);
+        requestBody.put("template", templateConfig);
+        requestBody.put("data", dataConfig);
+        requestBody.put("document", documentConfig);
 
-		List<Map<String, String>> variables = new ArrayList<>();
-		variables.add(Map.of("name", "id_protocolo", "value", protocolo, "type", "global"));
-		variables.add(Map.of("name", "data_auditoria", "value", dataAtual, "type", "global"));
-		variables.add(Map.of("name", "nome_obra", "value", nomeObra, "type", "global"));
-		variables.add(Map.of("name", "empresa_contratada", "value", empresaContratada, "type", "global")); // Dinâmico!
-		variables.add(Map.of("name", "nivel_risco", "value", statusRisco, "type", "global"));
-		variables.add(Map.of("name", "parecer_ia", "value", parecerIa, "type", "global"));
+        // --- INÍCIO DOS LOGS DE DEBUG ---
+        try {
+            String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(requestBody);
+            System.out.println("\n--- DEBUG DOCTAVIAN [PAYLOAD DE GERAÇÃO] ---");
+            System.out.println(jsonPayload);
+            System.out.println("----------------------------------------------\n");
+        } catch (Exception e) {
+            System.out.println("Não foi possível logar o payload: " + e.getMessage());
+        }
+        // --- FIM DOS LOGS DE DEBUG ---
 
-		Map<String, Object> dataMap = new HashMap<>();
-		dataMap.put("variables", variables);
-		requestBody.put("data", dataMap);
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, generateHeaders);
 
-		Map<String, Object> documentMap = new HashMap<>();
-		documentMap.put("name", "Termo_Auditoria_" + protocolo);
-		documentMap.put("fileFormat", "pdf");
-		documentMap.put("deliveryMethod", "Storage");
-		documentMap.put("timezone", "America/Sao_Paulo");
-		documentMap.put("locale", "pt_BR");
-		requestBody.put("document", documentMap);
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    generateUrl, 
+                    HttpMethod.POST, 
+                    requestEntity, 
+                    Map.class
+            );
 
-		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> body = response.getBody();
+                Object documentUrlObj = body.get("document_url");
+                return documentUrlObj != null ? documentUrlObj.toString() : "https://demo.portal.doctavian.com";
+            } else {
+                throw new RuntimeException("Erro na resposta de geração. Status: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Falha ao gerar o documento final: " + e.getMessage());
+        }
+    }
+
+	private String fazerUploadDeDados(Map<String, Object> dataValues, HttpHeaders authHeaders) {
+		String uploadUrl = apiUrl + "/v1/documents/data/upload";
 
 		try {
-			ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-				apiUrl, 
-				HttpMethod.POST, 
-				entity, 
-				new ParameterizedTypeReference<Map<String, Object>>() {}
-			);
+			String jsonString = objectMapper.writeValueAsString(dataValues);
 
-			if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
-				Map<String, Object> body = response.getBody();
-				
-				@SuppressWarnings("unchecked")
-				Map<String, Object> result = (Map<String, Object>) body.get("result");
-				
-				if (result != null) {
-					@SuppressWarnings("unchecked")
-					Map<String, Object> data = (Map<String, Object>) result.get("data");
-					
-					if (data != null) {
-						@SuppressWarnings("unchecked")
-						Map<String, Object> document = (Map<String, Object>) data.get("document");
-						
-						if (document != null && document.containsKey("urn")) {
-							return document.get("urn").toString();
-						}
-					}
+			org.springframework.core.io.ByteArrayResource resource = new org.springframework.core.io.ByteArrayResource(
+					jsonString.getBytes()) {
+				@Override
+				public String getFilename() {
+					return "civis-data.json";
 				}
+			};
+
+			HttpHeaders uploadHeaders = new HttpHeaders();
+			uploadHeaders.putAll(authHeaders);
+			uploadHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+			org.springframework.util.MultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+			body.add("file", resource);
+
+			HttpEntity<org.springframework.util.MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body,
+					uploadHeaders);
+
+			ResponseEntity<Map> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, Map.class);
+
+			if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+				Map<String, Object> responseBody = response.getBody();
+
+				try {
+					// Navegando no JSON retornado pela Doctavian: result -> data -> files[0] -> id
+					Map<String, Object> resultObj = (Map<String, Object>) responseBody.get("result");
+					Map<String, Object> dataObj = (Map<String, Object>) resultObj.get("data");
+					java.util.List<Map<String, Object>> filesList = (java.util.List<Map<String, Object>>) dataObj
+							.get("files");
+
+					if (filesList != null && !filesList.isEmpty()) {
+						return filesList.get(0).get("id").toString();
+					}
+				} catch (Exception parseEx) {
+					throw new RuntimeException(
+							"O formato da resposta mudou. Não foi possível extrair o ID: " + responseBody);
+				}
+
+				throw new RuntimeException("Nenhum ID encontrado na resposta de upload.");
+			} else {
+				throw new RuntimeException("Status de erro no upload de dados: " + response.getStatusCode());
 			}
 		} catch (Exception e) {
-			System.out.println("⚠️ [Doctavian API] Falha externa. Acionando motor inteligente Apache POI...");
-		}
-
-		try {
-			File templateFile = new File("template_base.docx");
-			XWPFDocument doc;
-
-			if (templateFile.exists()) {
-				doc = new XWPFDocument(new FileInputStream(templateFile));
-			} else {
-				doc = new XWPFDocument();
-				XWPFParagraph p = doc.createParagraph();
-				XWPFRun r = p.createRun();
-				r.setText("TERMO OFICIAL DE DILIGÊNCIA - PROTOCOLO: " + protocolo);
-			}
-
-			for (XWPFParagraph p : doc.getParagraphs()) {
-				substituirTextoParagrafo(p, protocolo, dataAtual, nomeObra, empresaContratada, statusRisco, parecerIa, isAprovado);
-			}
-
-			for (XWPFTable table : doc.getTables()) {
-				for (XWPFTableRow row : table.getRows()) {
-					for (XWPFTableCell cell : row.getTableCells()) {
-						for (XWPFParagraph p : cell.getParagraphs()) {
-							substituirTextoParagrafo(p, protocolo, dataAtual, nomeObra, empresaContratada, statusRisco, parecerIa, isAprovado);
-						}
-					}
-				}
-			}
-
-			File outDir = new File("public");
-			if (!outDir.exists()) outDir.mkdir();
-
-			File outFile = new File("public/termo_oficial_civis.docx");
-			FileOutputStream fos = new FileOutputStream(outFile);
-			doc.write(fos);
-			doc.close();
-			fos.close();
-
-			return "http://localhost:8080/files/termo_oficial_civis.docx";
-
-		} catch (Exception ex) {
-			System.err.println("Erro crítico no gerador local: " + ex.getMessage());
-			return "http://localhost:8080/files/termo_oficial_civis.docx";
-		}
-	}
-
-	private void substituirTextoParagrafo(XWPFParagraph p, String protocolo, String data, String obra, String contratada, String risco, String parecer, boolean aprovado) {
-		String fullText = p.getText();
-		if (fullText == null || fullText.isEmpty()) {
-			return;
-		}
-
-		boolean modified = false;
-
-		if (fullText.contains("{{")) {
-			fullText = fullText.replace("{{id_protocolo}}", protocolo)
-					   .replace("{{data_auditoria}}", data)
-					   .replace("{{nome_obra}}", obra)
-					   .replace("{{empresa_contratada}}", contratada)
-					   .replace("{{nivel_risco}}", risco)
-					   .replace("{{parecer_ia}}", parecer);
-			modified = true;
-		}
-
-		if ((fullText.contains("APROVADO") && aprovado) || (fullText.contains("RETIDO") && !aprovado)) {
-			if (fullText.contains("[ ]") || fullText.contains("☐")) {
-				fullText = fullText.replace("[ ]", "[X]").replace("☐", "[X]");
-				modified = true;
-			}
-		}
-
-		if (modified) {
-			int count = p.getRuns().size();
-			for (int i = count - 1; i >= 0; i--) {
-				p.removeRun(i);
-			}
-			XWPFRun newRun = p.createRun();
-			newRun.setText(fullText);
+			throw new RuntimeException("Falha ao fazer upload do JSON de dados: " + e.getMessage());
 		}
 	}
 }

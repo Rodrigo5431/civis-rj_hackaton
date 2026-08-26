@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Bot,
@@ -13,6 +13,12 @@ import {
   Check,
   RefreshCw,
 } from "lucide-react";
+
+declare global {
+  interface Window {
+    NutrientViewer?: any;
+  }
+}
 
 type AuditStatus =
   | "PENDING_EXTRACTION"
@@ -34,6 +40,67 @@ interface AuditUploadResponse {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const NUTRIENT_PUBLISHABLE_KEY = import.meta.env.VITE_NUTRIENT_PUBLISHABLE_KEY;
+
+function NutrientViewerEmbed({ file }: { file: File }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoadingSdk, setIsLoadingSdk] = useState(true);
+
+  useEffect(() => {
+    if (!window.NutrientViewer) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.cloud.nutrient.io/pspdfkit-web@1.17.0/nutrient-viewer.js";
+      script.async = true;
+      script.onload = () => setIsLoadingSdk(false);
+      document.body.appendChild(script);
+    } else {
+      setIsLoadingSdk(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    
+    const loadViewer = async () => {
+      if (!isLoadingSdk && container && window.NutrientViewer && file) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          
+          window.NutrientViewer.unload(container);
+          await window.NutrientViewer.load({
+            container,
+            document: arrayBuffer,
+            session: NUTRIENT_PUBLISHABLE_KEY, 
+          });
+          
+          console.log("✅ Visualizador Nutrient DWS carregado com sucesso!");
+        } catch (error) {
+          console.error("⚠️ Erro ao carregar o Nutrient DWS:", error);
+        }
+      }
+    };
+
+    loadViewer();
+
+    return () => {
+      if (container && window.NutrientViewer) {
+        window.NutrientViewer.unload(container);
+      }
+    };
+  }, [isLoadingSdk, file]);
+
+  return (
+    <div className="w-full h-[450px] bg-slate-900 rounded-lg overflow-hidden border border-white/10 shadow-inner relative flex items-center justify-center">
+      {isLoadingSdk && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-slate-400 bg-slate-950/80 z-10">
+          <Loader2 className="animate-spin text-cyan-500" size={24} /> 
+          Carregando motor Nutrient...
+        </div>
+      )}
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
+  );
+}
 
 interface OfficialDocumentSectionProps {
   auditId: string;
@@ -88,8 +155,7 @@ function OfficialDocumentSection({
     <div className="mt-6 border-t border-slate-700 pt-5">
       <h3 className="text-lg font-semibold text-white mb-2">Operações de Fechamento (Doctavian)</h3>
       <p className="text-sm text-slate-400 mb-4">
-        Transforme o laudo técnico em um Termo Oficial de Notificação pronto para assinatura
-        digital.
+        Transforme o laudo técnico em um Termo Oficial de Notificação pronto para assinatura digital.
       </p>
 
       {!doctavianUrl ? (
@@ -142,33 +208,52 @@ function OfficialDocumentSection({
 function TransparencyPortalSection({ cityName }: { cityName: string }) {
   const [domains, setDomains] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [registeredDomain, setRegisteredDomain] = useState<string | null>(null);
+  
+  const [registeringDomain, setRegisteringDomain] = useState<string | null>(null);
 
   const handleSearchDomains = async () => {
     setIsSearching(true);
+    setHasSearched(false);
     try {
       const response = await fetch(
         `${API_BASE_URL}/transparency/domain-search?cityName=${encodeURIComponent(cityName)}`,
       );
       const data = await response.json();
-      if (data.results) {
+      
+      if (data.results && data.results.length > 0) {
         setDomains(data.results.slice(0, 3));
       } else {
-        setDomains([
-          { domainName: `transparencia-${cityName}.org`, purchasePrice: 12.99 },
-          { domainName: `obras-${cityName}.live`, purchasePrice: 3.99 },
-          { domainName: `civis-${cityName}.info`, purchasePrice: 5.99 },
-        ]);
+        setDomains([]);
       }
     } catch (error) {
       console.error("Erro ao buscar domínios na Name.com", error);
+      setDomains([]);
     } finally {
       setIsSearching(false);
+      setHasSearched(true);
     }
   };
 
-  const handleRegister = (domainName: string) => {
-    setRegisteredDomain(domainName);
+  const handleRegister = async (domainName: string) => {
+    setRegisteringDomain(domainName);
+    try {
+      const response = await fetch(`${API_BASE_URL}/transparency/domain-register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domainName })
+      });
+      
+      if (!response.ok) throw new Error("Falha no registro na Name.com");
+      
+      setRegisteredDomain(domainName);
+    } catch (error) {
+      console.error("Erro ao registrar o domínio via backend", error);
+      alert("Erro ao registrar o domínio. Verifique sua conexão ou créditos da Name.com.");
+    } finally {
+      setRegisteringDomain(null);
+    }
   };
 
   return (
@@ -178,25 +263,31 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
         Portal de Transparência (Name.com)
       </h3>
       <p className="text-sm text-slate-400 mb-4">
-        Disponibilize os dados desta auditoria para a população. Busque e provisione um domínio
-        dedicado instantaneamente.
+        Disponibilize os dados desta auditoria para a população. Busque e provisione um domínio dedicado instantaneamente.
       </p>
 
       {!registeredDomain ? (
         <>
           {domains.length === 0 ? (
-            <button
-              onClick={handleSearchDomains}
-              disabled={isSearching}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg w-full justify-center lg:w-max"
-            >
-              {isSearching ? <Loader2 className="animate-spin" size={16} /> : <Globe size={16} />}
-              {isSearching ? "Buscando na Name.com..." : "Consultar Domínios Disponíveis"}
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleSearchDomains}
+                disabled={isSearching}
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg w-full justify-center lg:w-max"
+              >
+                {isSearching ? <Loader2 className="animate-spin" size={16} /> : <Globe size={16} />}
+                {isSearching ? "Consultando Name.com API..." : "Consultar Domínios Disponíveis"}
+              </button>
+              {hasSearched && !isSearching && (
+                <p className="text-xs text-red-400">
+                  Nenhum domínio disponível foi retornado pela API para esta consulta.
+                </p>
+              )}
+            </div>
           ) : (
             <div className="space-y-3 animate-in fade-in duration-300">
               <p className="text-xs text-blue-300 uppercase tracking-wider font-semibold">
-                Opções Disponíveis na Name.com:
+                Opções Reais Disponíveis na Name.com:
               </p>
               {domains.map((d, i) => (
                 <div
@@ -209,9 +300,15 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
                   </div>
                   <button
                     onClick={() => handleRegister(d.domainName)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded shadow-md flex items-center gap-1.5 transition-colors"
+                    disabled={registeringDomain !== null}
+                    className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold py-2 px-3 rounded shadow-md flex items-center gap-1.5 transition-colors"
                   >
-                    <Server size={14} /> Registrar & Apontar
+                    {registeringDomain === d.domainName ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <Server size={14} />
+                    )}
+                    {registeringDomain === d.domainName ? "Registrando..." : "Registrar & Apontar"}
                   </button>
                 </div>
               ))}
@@ -222,7 +319,7 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
         <div className="p-4 bg-blue-950/40 border border-blue-500/30 rounded-lg flex items-start gap-3 animate-in fade-in zoom-in duration-300">
           <Check className="text-blue-400 mt-0.5 shrink-0" size={20} />
           <div>
-            <p className="font-semibold text-blue-300">Domínio Provisionado com Sucesso!</p>
+            <p className="font-semibold text-blue-300">Domínio Selecionado para Provisionamento!</p>
             <p className="text-xs text-blue-200/80 mt-1">
               O domínio{" "}
               <span className="font-mono text-white bg-blue-900/80 px-1.5 py-0.5 rounded mx-1">
@@ -348,19 +445,18 @@ export function ContractAuditor() {
         },
         body: JSON.stringify({
           model: "meta-llama/llama-3.1-8b-instruct",
+          max_tokens: 250, 
           messages: [
             {
               role: "system",
               content:
-                "Você é o Copiloto Civis, um auditor sênior de obras públicas. Seja direto, técnico e profissional.",
+                "Você é o Copiloto Civis, um auditor de obras públicas. Responda estritamente com UM ÚNICO PARÁGRAFO de no máximo 500 caracteres. Seja direto, técnico e formal. Proibido usar introduções longas ou listas.",
             },
             {
               role: "user",
-              content: `Gere um parecer final de auditoria de 1 parágrafo para a obra ${audit.idObra}. 
-              Considere os seguintes dados:
-              - Extração de Contrato (Nutrient DWS): Validação Concluída sem adulterações.
-              - Varredura na Web (SerpApi): Nenhum risco iminente ou fraude detectada.
-              Finalize recomendando a liberação do orçamento para início das atividades.`,
+              content: `Gere o parecer final de auditoria para a obra ${audit.idObra}. 
+              Dados: Extração de Contrato (Nutrient DWS) validada sem adulterações. Varredura web (SerpApi) sem riscos. 
+              Conclua recomendando a liberação do orçamento para início das atividades.`,
             },
           ],
         }),
@@ -369,7 +465,13 @@ export function ContractAuditor() {
       if (!response.ok) throw new Error("Falha ao gerar parecer com a IA.");
 
       const data = await response.json();
-      setParecerIA(data.choices[0].message.content);
+      let textoGerado = data.choices[0].message.content.trim();
+      
+      if (textoGerado.length > 670) {
+        textoGerado = textoGerado.substring(0, 667) + "...";
+      }
+
+      setParecerIA(textoGerado);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao gerar parecer.");
     } finally {
@@ -454,7 +556,7 @@ export function ContractAuditor() {
         </div>
 
         <div>
-          {audit ? (
+          {audit && file ? (
             <div className="rounded-xl border border-white/10 bg-slate-900/40 p-6 h-full flex flex-col shadow-inner animate-in fade-in duration-300">
               <div className="mb-6 flex flex-wrap gap-6 text-sm border-b border-white/5 pb-4">
                 <p>
@@ -467,14 +569,12 @@ export function ContractAuditor() {
                 </p>
               </div>
 
-              <div className="mb-6 flex flex-1 min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed border-white/20 bg-slate-950/80">
-                <div className="text-center text-slate-400 p-6">
-                  <p className="mb-3 font-semibold text-slate-300 text-lg">DWS Viewer</p>
-                  <p className="text-sm mb-4">Simulação do visualizador de documentos Nutrient</p>
-                  <p className="text-xs break-all px-4 font-mono text-slate-500">
-                    {audit.dwsViewerUrl}
-                  </p>
-                </div>
+              <div className="mb-6">
+                <p className="mb-2 font-semibold text-slate-300 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <Globe size={16} className="text-cyan-400" />
+                  Visualizador Oficial (Nutrient DWS)
+                </p>
+                <NutrientViewerEmbed file={file} />
               </div>
 
               {!isApproved ? (
