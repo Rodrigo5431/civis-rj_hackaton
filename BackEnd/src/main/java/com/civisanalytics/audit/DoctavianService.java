@@ -35,13 +35,11 @@ public class DoctavianService {
 
 public String gerarTermoOficial(String auditId, String idObra, String aiVerdict, String empresaContratada) {
         
-        // 1. PREPARAR HEADERS DE AUTENTICAÇÃO
         HttpHeaders authHeaders = new HttpHeaders();
         authHeaders.set("x-api-key", apiKey.trim());
         String cleanToken = apiToken.startsWith("Bearer ") ? apiToken : "Bearer " + apiToken;
         authHeaders.set("Authorization", cleanToken.trim());
 
-        // 2. MONTAR OS DADOS DA AUDITORIA
         Map<String, Object> dataValues = new HashMap<>();
         dataValues.put("id_obra", idObra);
         dataValues.put("audit_id", auditId);
@@ -49,11 +47,9 @@ public String gerarTermoOficial(String auditId, String idObra, String aiVerdict,
         dataValues.put("parecer_tecnico", aiVerdict);
         dataValues.put("data_emissao", java.time.LocalDate.now().toString());
 
-        // 3. FAZER UPLOAD DOS DADOS E PEGAR O ID
         String dataUrn = fazerUploadDeDados(dataValues, authHeaders);
         System.out.println("DEBUG DOCTAVIAN -> Upload de dados OK. URN recebido: " + dataUrn);
 
-        // 4. STEP 5 - GERAR O DOCUMENTO
         String generateUrl = apiUrl + "/v1/documents/document/generate";
 
         HttpHeaders generateHeaders = new HttpHeaders();
@@ -89,7 +85,6 @@ public String gerarTermoOficial(String auditId, String idObra, String aiVerdict,
         requestBody.put("data", dataConfig);
         requestBody.put("document", documentConfig);
 
-        // --- INÍCIO DOS LOGS DE DEBUG ---
         try {
             String jsonPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(requestBody);
             System.out.println("\n--- DEBUG DOCTAVIAN [PAYLOAD DE GERAÇÃO] ---");
@@ -98,7 +93,6 @@ public String gerarTermoOficial(String auditId, String idObra, String aiVerdict,
         } catch (Exception e) {
             System.out.println("Não foi possível logar o payload: " + e.getMessage());
         }
-        // --- FIM DOS LOGS DE DEBUG ---
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, generateHeaders);
 
@@ -152,7 +146,6 @@ public String gerarTermoOficial(String auditId, String idObra, String aiVerdict,
 				Map<String, Object> responseBody = response.getBody();
 
 				try {
-					// Navegando no JSON retornado pela Doctavian: result -> data -> files[0] -> id
 					Map<String, Object> resultObj = (Map<String, Object>) responseBody.get("result");
 					Map<String, Object> dataObj = (Map<String, Object>) resultObj.get("data");
 					java.util.List<Map<String, Object>> filesList = (java.util.List<Map<String, Object>>) dataObj
