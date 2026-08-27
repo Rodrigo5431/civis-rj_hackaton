@@ -18,7 +18,7 @@
   <br><br>
 
   <h3>Complete Audit Workflow (Sponsor Integrations)</h3>
-  <p>100% automated pipeline: Contract Reading (Nutrient DWS) -> Predictive Verdict (OpenRouter/Llama 3) -> Official Document Generation (Doctavian) -> Public Domain Provisioning (Name.com).</p>
+  <p>100% automated pipeline: Contract Reading (Nutrient DWS) ➔ Predictive Verdict (OpenRouter/Llama 3) ➔ Official Document Generation (Doctavian) ➔ Public Domain Provisioning (Name.com).</p>
   <img src="./assets/auditoria-completa.png" alt="Complete Audit" width="800">
 
   <br><br>
@@ -52,31 +52,31 @@ In this MVP, we built a robust pipeline integrating the **Nutrient DWS Data Extr
 ## 🛠️ Architecture & Technologies
 
 ### Frontend
-- React 18 with TypeScript
-- Vite
-- Tailwind CSS + Shadcn UI
-- Lucide React (Icons)
+*   React 18 with TypeScript
+*   Vite
+*   Tailwind CSS + Shadcn UI
+*   Lucide React (Icons)
 
 ### Backend
-- Java 17+
-- Spring Boot 3 (Spring Web, Spring Data JPA, Spring Validation)
-- Apache PDFBox (Document context validation)
-- PostgreSQL hosted on Supabase
-- HikariCP (Connection Pooling)
+*   Java 17+
+*   Spring Boot 3 (Spring Web, Spring Data JPA, Spring Validation)
+*   Apache PDFBox (Document context validation)
+*   PostgreSQL hosted on Supabase
+*   HikariCP (Connection Pooling)
 
 ### Services & APIs
-- Nutrient DWS API (Data Extraction & Interactive Document Viewer)
-- SerpApi (Real-time Google News scraping for contractor due diligence)
-- OpenRouter API (LLM routing for the AI Copilot final verdict)
-- Supabase (Relational database and cloud infrastructure)
-- Doctavian API (Official legal document generation)
-- Name.com API (Transparency portal domain provisioning)
+*   **Nutrient DWS API:** Data Extraction & Interactive Document Viewer
+*   **SerpApi:** Real-time Google News scraping for contractor due diligence
+*   **OpenRouter API:** LLM routing for the AI Copilot final verdict
+*   **Supabase:** Relational database and cloud infrastructure
+*   **Doctavian API:** Official legal document generation
+*   **Name.com API:** Transparency portal domain provisioning
 
 ---
 
 ## 📁 Monorepo Structure
 
-```
+```text
 civis-rj/
 ├── backend/                  # REST API in Spring Boot
 │   ├── src/main/java/        # Controllers, Services, Repositories, and Entities
@@ -90,20 +90,22 @@ civis-rj/
 ├── .gitignore
 └── README.md
 ```
+
 ---
 
 ## ⚙️ How to Run Locally
 
 ### Prerequisites
-- Java 17+ and Maven installed
-- Node.js 18+ and npm (or yarn/pnpm)
-- PostgreSQL instance (or a Supabase project)
+*   Java 17+ and Maven installed
+*   Node.js 18+ and npm (or yarn/pnpm)
+*   PostgreSQL instance (or a Supabase project)
 
 ---
 
 ### 1. Database Setup
 Run the following SQL script to create the audit table in your PostgreSQL database:
-```
+
+```sql
 CREATE TABLE IF NOT EXISTS contract_audits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_obra TEXT NOT NULL,
@@ -123,54 +125,58 @@ CREATE TABLE IF NOT EXISTS contract_audits (
 CREATE INDEX IF NOT EXISTS idx_contract_audits_id_obra ON contract_audits(id_obra);
 CREATE INDEX IF NOT EXISTS idx_contract_audits_status ON contract_audits(status);
 ```
+
 ---
 
 ### 2. Running the Backend (Spring Boot)
 
 1. Navigate to the backend folder:
- ```
+   ```bash
    cd backend
-```
-
-3. Configure your credentials in src/main/resources/application.properties:
    ```
+
+2. Configure your credentials in `src/main/resources/application.properties`:
+   ```properties
    spring.datasource.url=jdbc:postgresql://db.YOUR_PROJECT.supabase.co:5432/postgres
    spring.datasource.username=postgres
    spring.datasource.password=YOUR_DB_PASSWORD
    spring.jpa.hibernate.ddl-auto=update
    
    nutrient.api-key=YOUR_NUTRIENT_API_KEY
-   nutrient.api-url=https://api.nutrient.io
+   nutrient.api-url=[https://api.nutrient.io](https://api.nutrient.io)
+   
    serpapi.api-key=YOUR_SERPAPI_KEY
+   
+   doctavian.template.urn=YOUR_TEMPLATE_URN
    ```
 
-4. Start the server:
-   ```
+3. Start the server:
+   ```bash
    mvn spring-boot:run
    ```
-   
-   (The backend will run on http://localhost:8080)
+   *(The backend will run on http://localhost:8080)*
 
 ---
 
 ### 3. Running the Frontend (React)
 
 1. In a new terminal, navigate to the frontend folder:
+   ```bash
    cd frontend
+   ```
 
-2. Create a .env file in the frontend root:
-```
+2. Create a `.env` file in the frontend root:
+   ```env
    VITE_API_BASE_URL=http://localhost:8080/api/audits
    VITE_OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
-```
+   ```
 
-4. Install dependencies and start the development server:
- ```
+3. Install dependencies and start the development server:
+   ```bash
    npm install
    npm run dev
-```
-   
-   (Access the interface at http://localhost:5173)
+   ```
+   *(Access the interface at http://localhost:5173)*
 
 ---
 
