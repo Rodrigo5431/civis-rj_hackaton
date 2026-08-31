@@ -1,4 +1,5 @@
-import { useState, type FormEvent, useEffect, useRef } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useRef, FormEvent } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Bot,
@@ -39,7 +40,6 @@ interface AuditUploadResponse {
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const NUTRIENT_PUBLISHABLE_KEY = import.meta.env.VITE_NUTRIENT_PUBLISHABLE_KEY;
 
 function NutrientViewerEmbed({ file }: { file: File }) {
@@ -210,7 +210,6 @@ function TransparencyPortalSection({ cityName }: { cityName: string }) {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [registeredDomain, setRegisteredDomain] = useState<string | null>(null);
-  
   const [registeringDomain, setRegisteringDomain] = useState<string | null>(null);
 
   const handleSearchDomains = async () => {
@@ -339,15 +338,11 @@ export function ContractAuditor() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   const [audit, setAudit] = useState<AuditUploadResponse | null>(null);
-
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [isApproving, setIsApproving] = useState<boolean>(false);
-
   const [parecerIA, setParecerIA] = useState<string | null>(null);
   const [isGeneratingParecer, setIsGeneratingParecer] = useState<boolean>(false);
-
   const [formKey, setFormKey] = useState<number>(0);
 
   function handleReset() {
@@ -393,10 +388,7 @@ export function ContractAuditor() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        if (errorData && errorData.error) {
-          throw new Error(errorData.error);
-        }
-        throw new Error(`Falha no upload (status ${response.status})`);
+        throw new Error(errorData?.error || `Falha no upload (status ${response.status})`);
       }
 
       const data: AuditUploadResponse = await response.json();
@@ -437,38 +429,27 @@ export function ContractAuditor() {
     setError(null);
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      // ⚠️ Alteração Principal: A chamada agora vai para o SEU back-end em Spring Boot.
+      // Certifique-se de que o seu back-end possui um endpoint que receba essa requisição.
+      const response = await fetch(`${API_BASE_URL}/${audit.id}/generate-ai-verdict`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-3.1-8b-instruct",
-          max_tokens: 250, 
-          messages: [
-            {
-              role: "system",
-              content:
-                "Você é o Copiloto Civis, um auditor de obras públicas. Responda estritamente com UM ÚNICO PARÁGRAFO de no máximo 500 caracteres. Seja direto, técnico e formal. Proibido usar introduções longas ou listas.",
-            },
-            {
-              role: "user",
-              content: `Gere o parecer final de auditoria para a obra ${audit.idObra}. 
-              Dados: Extração de Contrato (Nutrient DWS) validada sem adulterações. Varredura web (SerpApi) sem riscos. 
-              Conclua recomendando a liberação do orçamento para início das atividades.`,
-            },
-          ],
+          idObra: audit.idObra,
         }),
       });
 
-      if (!response.ok) throw new Error("Falha ao gerar parecer com a IA.");
+      if (!response.ok) throw new Error("Falha ao gerar parecer com a IA via back-end.");
 
       const data = await response.json();
-      let textoGerado = data?.choices?.[0]?.message?.content?.trim();
+      
+      // Ajuste isso caso a estrutura do JSON que o seu back-end devolve seja diferente
+      let textoGerado = data.verdict || data.parecer; 
       
       if (!textoGerado) {
-        throw new Error("A IA retornou uma resposta vazia.");
+        throw new Error("O servidor retornou uma resposta vazia.");
       }
 
       if (textoGerado.length > 670) {

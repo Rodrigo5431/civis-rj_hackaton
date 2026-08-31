@@ -4,16 +4,11 @@ export const OBRAS_SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL;
 
 export const OBRAS_SUPABASE_ANON = 
-  import.meta.env.VITE_SUPABASE_ANON_KEY ;
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const obrasSupabase = createClient(OBRAS_SUPABASE_URL, OBRAS_SUPABASE_ANON, {
   auth: { persistSession: false },
 });
-
-export const OPENROUTER_API_KEY = 
-  import.meta.env.VITE_OPENROUTER_API_KEY ;
-
-export const OPENROUTER_MODEL = "meta-llama/llama-3.1-8b-instruct";
 
 export type Obra = Record<string, any> & {
   id?: string | number;

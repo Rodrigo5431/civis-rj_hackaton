@@ -1,14 +1,11 @@
 import { useRef, useState } from "react";
-import { MessageSquare, Send, Sparkles, X } from "lucide-react";
+import { MessageSquare, Send, Sparkles, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  OPENROUTER_API_KEY,
-  OPENROUTER_MODEL,
-  type Obra,
-} from "@/lib/civis";
+import type { Obra } from "@/lib/civis";
+
 
 type Msg = { role: "user" | "assistant" | "system"; content: string };
 
@@ -44,24 +41,24 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const API_HOST = import.meta.env.VITE_API_BASE_URL.split("/api/")[0];
+
   const send = async () => {
     const text = input.trim();
     if (!text || loading) return;
+    
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next);
     setInput("");
     setLoading(true);
+    
     try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const res = await fetch(`${API_HOST}/api/copilot/chat`, {
         method: "POST",
         headers: {
-          Authorization: "Bearer " + OPENROUTER_API_KEY,
-          "HTTP-Referer": window.location.href,
-          "X-Title": "Civis RJ - Centro de Comando Preditivo",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
           messages: [
             { role: "system", content: SYSTEM_PROMPT(obras.length) },
             { role: "system", content: buildContext(obras) },
@@ -69,16 +66,20 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
           ],
         }),
       });
-      const json = await res.json();
-      const reply =
-        json?.choices?.[0]?.message?.content ??
-        json?.error?.message ??
-        "Sem resposta.";
+
+      if (!res.ok) {
+        throw new Error("Falha ao comunicar com o servidor Civis.");
+      }
+
+      const data = await res.json();
+      
+      const reply = data.reply || data.resposta || data?.choices?.[0]?.message?.content || "Resposta não identificada no servidor.";
+      
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch (e: any) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Erro ao consultar IA: " + (e?.message ?? "desconhecido") },
+        { role: "assistant", content: "Erro de comunicação: " + (e?.message ?? "desconhecido") },
       ]);
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
             <button
               onClick={() => setOpen(false)}
               aria-label="Fechar"
-              className="rounded-md p-1 text-muted-foreground hover:bg-white/10"
+              className="rounded-md p-1 text-muted-foreground hover:bg-white/10 transition-colors"
             >
               <X className="size-4" />
             </button>
@@ -124,21 +125,22 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                     m.role === "user"
                       ? "ml-auto bg-cyan-500/20 text-cyan-50"
-                      : "bg-white/5 text-slate-100"
+                      : "bg-white/5 text-slate-100 border border-white/5"
                   }`}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 </div>
               ))}
               {loading && (
-                <div className="bg-white/5 max-w-[85%] rounded-lg px-3 py-2 text-sm text-muted-foreground">
-                  Analisando dados...
+                <div className="bg-white/5 max-w-[85%] rounded-lg px-3 py-2 text-sm text-cyan-400 flex items-center gap-2 border border-white/5">
+                  <Loader2 className="animate-spin" size={14} />
+                  Analisando dados táticos...
                 </div>
               )}
             </div>
           </ScrollArea>
 
-          <div className="border-t border-white/10 p-3">
+          <div className="border-t border-white/10 p-3 bg-slate-950">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -150,14 +152,14 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ex: quais bairros priorizar?"
-                className="border-white/10 bg-white/5"
+                className="border-white/10 bg-white/5 text-sm focus-visible:ring-cyan-500/50"
                 disabled={loading}
               />
               <Button
                 type="submit"
                 size="icon"
                 disabled={loading || !input.trim()}
-                className="bg-cyan-500 hover:bg-cyan-400"
+                className="bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
               >
                 <Send className="size-4" />
               </Button>
