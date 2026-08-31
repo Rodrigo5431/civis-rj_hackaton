@@ -34,14 +34,11 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
   const BASE_LAT = -22.5269;
   const BASE_LNG = -41.945;
 
-  // 1. FILTRO DE LIMPEZA VISUAL
-  // Barramos qualquer obra que tenha "NÃO ESPECIFICADO" no nome do bairro
   const obrasFiltradas = obras.filter((o) => {
     const bairro = (o.bairro ?? "").toString().trim().toUpperCase();
     return !bairro.includes("NÃO ESPECIFICADO");
   });
 
-  // 2. MOCK E JITTER (Aplicado apenas nas obras reais que sobraram)
   const obrasProcessadas = obrasFiltradas.map((o) => {
     let lat = Number(o.latitude);
     let lng = Number(o.longitude);
@@ -69,8 +66,10 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
         scrollWheelZoom
       >
         <TileLayer
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={20}
         />
         <FitBounds obras={obrasProcessadas} />
 
