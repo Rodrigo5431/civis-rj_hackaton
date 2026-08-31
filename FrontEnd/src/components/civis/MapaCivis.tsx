@@ -1,11 +1,5 @@
 import { useEffect, useRef } from "react";
-import {
-  CircleMarker,
-  MapContainer,
-  Popup,
-  TileLayer,
-  useMap,
-} from "react-leaflet";
+import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression, Map as LeafletMap } from "leaflet";
 import { RIO_DAS_OSTRAS, type Obra } from "@/lib/civis";
 
@@ -38,7 +32,7 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
   const mapRef = useRef<LeafletMap | null>(null);
 
   const BASE_LAT = -22.5269;
-  const BASE_LNG = -41.9450;
+  const BASE_LNG = -41.945;
 
   // 1. FILTRO DE LIMPEZA VISUAL
   // Barramos qualquer obra que tenha "NÃO ESPECIFICADO" no nome do bairro
@@ -75,14 +69,13 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
         scrollWheelZoom
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
         />
         <FitBounds obras={obrasProcessadas} />
-        
+
         {obrasProcessadas.map((o, i) => {
-          const isAlto =
-            (o.risco_preditivo ?? "").toString().trim().toLowerCase() === "alto";
+          const isAlto = (o.risco_preditivo ?? "").toString().trim().toLowerCase() === "alto";
           return (
             <CircleMarker
               key={(o.id as any) ?? i}

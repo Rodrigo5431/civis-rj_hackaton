@@ -29,11 +29,9 @@ const riscoBadge = (r: string | null | undefined) => {
 export function AuditoriaTable({ obras }: { obras: Obra[] }) {
   const [open, setOpen] = useState<Obra | null>(null);
   
-  // --- LÓGICA DE PAGINAÇÃO ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15; // Quantidade ideal para não precisar de muito scroll
+  const itemsPerPage = 15; 
 
-  // Volta para a página 1 sempre que os filtros mudarem a lista de obras
   useEffect(() => {
     setCurrentPage(1);
   }, [obras]);
@@ -42,7 +40,6 @@ export function AuditoriaTable({ obras }: { obras: Obra[] }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   
-  // Corta apenas os itens da página atual
   const paginatedObras = obras.slice(startIndex, endIndex);
 
   return (
@@ -95,7 +92,6 @@ export function AuditoriaTable({ obras }: { obras: Obra[] }) {
         </Table>
       </div>
 
-      {/* --- CONTROLES DE PAGINAÇÃO (Só exibe se tiver mais de 1 página ou se tiver itens) --- */}
       {obras.length > 0 && (
         <div className="flex items-center justify-between border-t border-white/10 px-4 py-3">
           <div className="text-xs text-muted-foreground">

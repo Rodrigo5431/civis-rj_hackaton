@@ -465,8 +465,12 @@ export function ContractAuditor() {
       if (!response.ok) throw new Error("Falha ao gerar parecer com a IA.");
 
       const data = await response.json();
-      let textoGerado = data.choices[0].message.content.trim();
+      let textoGerado = data?.choices?.[0]?.message?.content?.trim();
       
+      if (!textoGerado) {
+        throw new Error("A IA retornou uma resposta vazia.");
+      }
+
       if (textoGerado.length > 670) {
         textoGerado = textoGerado.substring(0, 667) + "...";
       }

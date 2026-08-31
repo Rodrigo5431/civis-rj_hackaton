@@ -18,9 +18,23 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Leaflet + Supabase Realtime são client-only. Evita SSR mismatch.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  
+  useEffect(() => {
+    setMounted(true);
+    
+    const pingServer = async () => {
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        await fetch(`${API_BASE_URL}/ping`, { method: "GET" });
+        console.log("🟢 Servidor acordado com sucesso via ping.");
+      } catch (error) {
+        console.log("⏳ Servidor aquecendo...");
+      }
+    };
+
+    pingServer();
+  }, []);
 
   if (!mounted) {
     return (
