@@ -56,6 +56,16 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
 
   return (
     <div className="relative z-0 h-[460px] w-full overflow-hidden rounded-xl border border-white/10">
+      {/* Classe CSS que inverte as cores do mapa padrão transformando-o em um tema escuro perfeito sem API Key */}
+      <style>{`
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution {
+          filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+      `}</style>
+
       <MapContainer
         center={RIO_DAS_OSTRAS}
         zoom={13}
@@ -66,10 +76,8 @@ export function MapaCivis({ obras }: { obras: Obra[] }) {
         scrollWheelZoom
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
-          maxZoom={20}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitBounds obras={obrasProcessadas} />
 
