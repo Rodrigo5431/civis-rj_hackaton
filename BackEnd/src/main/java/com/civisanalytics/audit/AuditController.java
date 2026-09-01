@@ -167,7 +167,7 @@ public class AuditController {
 		}
 	}
 
-	@PostMapping("/copilot/chat")
+	@PostMapping("/chat")
 	public ResponseEntity<?> chatWithCopilot(@RequestBody Map<String, Object> payload) {
 		try {
 			List<Map<String, String>> messages = (List<Map<String, String>>) payload.get("messages");
