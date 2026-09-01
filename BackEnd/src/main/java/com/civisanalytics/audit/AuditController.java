@@ -1,6 +1,7 @@
 package com.civisanalytics.audit;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -8,7 +9,10 @@ import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.civisanalytics.audit.dto.AuditUploadResponse;
@@ -64,13 +69,20 @@ public class AuditController {
 			String text = stripper.getText(document).toLowerCase();
 
 			int score = 0;
-			if (text.contains("contratante")) score++;
-			if (text.contains("contratada")) score++;
-			if (text.contains("cláusula")) score++;
-			if (text.contains("licitação")) score++;
-			if (text.contains("termo de referência")) score++;
-			if (text.contains("diário oficial")) score++;
-			if (text.contains("cnpj")) score++;
+			if (text.contains("contratante"))
+				score++;
+			if (text.contains("contratada"))
+				score++;
+			if (text.contains("cláusula"))
+				score++;
+			if (text.contains("licitação"))
+				score++;
+			if (text.contains("termo de referência"))
+				score++;
+			if (text.contains("diário oficial"))
+				score++;
+			if (text.contains("cnpj"))
+				score++;
 
 			if (score < 2) {
 				return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
@@ -152,6 +164,47 @@ public class AuditController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(Map.of("error", "Erro ao registrar domínio: " + e.getMessage()));
+		}
+	}
+
+	@PostMapping("/copilot/chat")
+	public ResponseEntity<?> chatWithCopilot(@RequestBody Map<String, Object> payload) {
+		try {
+			List<Map<String, String>> messages = (List<Map<String, String>>) payload.get("messages");
+
+			RestTemplate restTemplate = new RestTemplate();
+			String url = "https://openrouter.ai/api/v1/chat/completions";
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.set("Authorization", "Bearer " + System.getenv("OPENROUTER_API_KEY"));
+			headers.set("HTTP-Referer", "https://civis-analytics.netlify.app");
+			headers.set("X-Title", "Civis RJ - Centro de Comando Preditivo");
+
+			Map<String, Object> body = new HashMap<>();
+			body.put("model", "meta-llama/llama-3.1-8b-instruct");
+			body.put("messages", messages);
+
+			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+			ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+			Map<String, Object> responseBody = response.getBody();
+			if (responseBody != null && responseBody.containsKey("choices")) {
+				List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
+				if (!choices.isEmpty()) {
+					Map<String, Object> messageObj = (Map<String, Object>) choices.get(0).get("message");
+					String content = (String) messageObj.get("content");
+
+					Map<String, String> result = new HashMap<>();
+					result.put("reply", content);
+					return ResponseEntity.ok(result);
+				}
+			}
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Map.of("error", "Resposta inválida do OpenRouter"));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
 		}
 	}
 }
