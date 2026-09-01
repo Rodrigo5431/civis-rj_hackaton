@@ -53,7 +53,7 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
     setLoading(true);
     
     try {
-      const res = await fetch(`${API_HOST}/api/copilot/chat`, {
+      const res = await fetch(`${API_HOST}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
