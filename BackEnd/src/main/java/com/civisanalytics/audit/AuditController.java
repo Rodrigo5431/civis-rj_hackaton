@@ -207,4 +207,51 @@ public class AuditController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
 		}
 	}
+
+	@PostMapping("/{id}/generate-ai-verdict")
+	public ResponseEntity<?> generateAiVerdict(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+		try {
+			String idObra = payload.getOrDefault("idObra", "Desconhecida");
+
+			RestTemplate restTemplate = new RestTemplate();
+			String url = "https://openrouter.ai/api/v1/chat/completions";
+
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.set("Authorization", "Bearer " + System.getenv("OPENROUTER_API_KEY"));
+			headers.set("HTTP-Referer", "https://civis-analytics.netlify.app");
+			headers.set("X-Title", "Civis RJ - Centro de Comando Preditivo");
+
+			String systemPrompt = "Você é o Copiloto Civis, um auditor de obras públicas. Responda estritamente com UM ÚNICO PARÁGRAFO de no máximo 500 caracteres. Seja direto, técnico e formal. Proibido usar introduções longas ou listas.";
+			String userPrompt = "Gere o parecer final de auditoria para a obra " + idObra
+					+ ". Dados: Extração de Contrato (Nutrient DWS) validada sem adulterações. Varredura web (SerpApi) sem riscos. Conclua recomendando a liberação do orçamento para início das atividades.";
+
+			List<Map<String, String>> messages = List.of(Map.of("role", "system", "content", systemPrompt),
+					Map.of("role", "user", "content", userPrompt));
+
+			Map<String, Object> body = new java.util.HashMap<>();
+			body.put("model", "meta-llama/llama-3.1-8b-instruct");
+			body.put("messages", messages);
+			body.put("max_tokens", 250);
+
+			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+			ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+			Map<String, Object> responseBody = response.getBody();
+			if (responseBody != null && responseBody.containsKey("choices")) {
+				List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
+				if (!choices.isEmpty()) {
+					Map<String, Object> messageObj = (Map<String, Object>) choices.get(0).get("message");
+					String content = (String) messageObj.get("content");
+
+					return ResponseEntity.ok(Map.of("verdict", content));
+				}
+			}
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Map.of("error", "Resposta inválida do OpenRouter"));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+		}
+	}
 }

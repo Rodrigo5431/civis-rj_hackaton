@@ -1,19 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useRef, FormEvent } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Bot,
+  Check,
   CheckCircle,
   CheckCircle2,
   FileSignature,
+  Globe,
   Loader2,
+  RefreshCw,
+  Server,
   Sparkles,
   Wand2,
-  Globe,
-  Server,
-  Check,
-  RefreshCw,
 } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -429,8 +428,6 @@ export function ContractAuditor() {
     setError(null);
 
     try {
-      // ⚠️ Alteração Principal: A chamada agora vai para o SEU back-end em Spring Boot.
-      // Certifique-se de que o seu back-end possui um endpoint que receba essa requisição.
       const response = await fetch(`${API_BASE_URL}/${audit.id}/generate-ai-verdict`, {
         method: "POST",
         headers: {
@@ -445,7 +442,6 @@ export function ContractAuditor() {
 
       const data = await response.json();
       
-      // Ajuste isso caso a estrutura do JSON que o seu back-end devolve seja diferente
       let textoGerado = data.verdict || data.parecer; 
       
       if (!textoGerado) {
