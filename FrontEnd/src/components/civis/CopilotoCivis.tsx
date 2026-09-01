@@ -41,7 +41,7 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const API_HOST = import.meta.env.VITE_API_BASE_URL.split("/api/")[0];
+  const API_HOST = import.meta.env.VITE_API_BASE_URL;
 
   const send = async () => {
     const text = input.trim();
@@ -53,7 +53,7 @@ export function CopilotoCivis({ obras }: { obras: Obra[] }) {
     setLoading(true);
     
     try {
-      const res = await fetch(`${API_HOST}/api/chat`, {
+      const res = await fetch(`${API_HOST}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
